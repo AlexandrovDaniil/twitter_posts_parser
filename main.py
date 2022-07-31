@@ -1,69 +1,80 @@
 import datetime
-
-from tg_bot.bot_test_variation import received_tweets_from_api
-from twitter_posts_parser.db import repositories
-from db.settings import SessionLocal
-from local_secrets import (
-    api_key,
-    api_secrets,
-    access_token,
-    access_secret,
-    bearer_token
-)
+import logging
+import re
+import time
+from typing import Optional
 
 import tweepy
+from db.entities import TweetInformation
+from db.settings import SessionLocal
+from local_secrets import (access_secret, access_token, api_key, api_secrets,
+                           bearer_token)
+from tg_bot.bot_test_variation import received_tweets_from_api
+
+from twitter_posts_parser.db import repositories
 
 client = tweepy.Client(bearer_token)
 user = client.get_user(username='ManagingBarca')
 
 
+logging.basicConfig(format='%(levelname)s %(asctime)s: %(message)s',
+                    level=logging.INFO)
+
+
 def get_tweets(count: int):
-    time_end = datetime.datetime.utcnow()
-    # time_end = datetime.datetime(2022, 7, 3, 0, 0)
-    time_start = datetime.datetime(2022, 7, 1, 0, 0)
-    # res = client.get_users_tweets(id=user.data.id, start_time=time_start,
-    #                               end_time=time_end, max_results=count)
     res = client.get_users_tweets(id=user.data.id, max_results=count)
-    print(res.meta['result_count'])
-    print(res)
+
     tweets = []
 
     last_load_id = get_last_row().tweet_id
     status = True
-    update_last_load(res.data[0].id, str(datetime.datetime.utcnow()))
+
     for tweet in res.data:
         if tweet.id == last_load_id:
             status = False
         if status:
             tweets.append(tweet)
 
-    send_tweets_to_tg(tweets)
+    messages_send = send_tweets_to_tg(tweets)
+
+    if messages_send:
+        update_last_load(
+            int(res.meta['newest_id']), str(datetime.datetime.utcnow())
+        )
 
     return tweets
 
 
-def get_last_row():
+def get_last_row() -> Optional[TweetInformation]:
     session_local = SessionLocal()
     d = repositories.LastLoadRepo(session_maker=session_local)
     return d.get_last_load()
 
 
-def update_last_load(tweet_id: int, time_of_update: str):
+def update_last_load(tweet_id: int, time_of_update: str) -> None:
     session_local = SessionLocal()
     d = repositories.LastLoadRepo(session_maker=session_local)
     d.update_information(tweet_id, time_of_update)
 
 
-def send_tweets_to_tg(tweets):
+def send_tweets_to_tg(tweets) -> Optional[bool]:
     if not tweets:
-        print('tweets list is empty')
-        return
-    print('ready to send to post tweets in tg')
+        logging.warning('tweets list is empty')
+
+        return False
+
+    logging.info('ready to send to post tweets in tg')
+
     for tweet in tweets:
         tweet.text = tweet.text.replace('&amp;', '&')
-    received_tweets_from_api(tweets)
+        tweet.text = re.sub('[^A-Za-z0-9-/().&@:\' ]+', '', tweet.text)
+        tweet.text = tweet.text.replace('@', '\nvia: https://twitter.com/')
+
+    messages_send = received_tweets_from_api(tweets[::-1])
+
+    return messages_send
 
 
-get_tweets(10)
-# for i in get_tweets(10):
-#     print(i)
+while True:
+    get_tweets(5)
+    time.sleep(300)

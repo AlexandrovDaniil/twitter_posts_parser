@@ -1,14 +1,8 @@
-from sqlalchemy import create_engine
-
-from sqlalchemy.orm import sessionmaker, registry
-from sqlalchemy import MetaData
-
-from db.entities import TweetInformation
-
 from datetime import datetime
 
-from sqlalchemy import Column, Table
-from sqlalchemy import Integer, String
+from db.entities import TweetInformation
+from sqlalchemy import Column, Integer, MetaData, String, Table, create_engine
+from sqlalchemy.orm import registry, sessionmaker
 
 engine = create_engine(
     # r'sqlite:///C:\Users\Daneksandrov\Desktop\

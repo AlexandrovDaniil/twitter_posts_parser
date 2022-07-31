@@ -1,44 +1,10 @@
 from typing import Optional
 
-from sqlalchemy.orm import registry
-
+from db.entities import TweetInformation
 from db.settings import last_load
+from sqlalchemy import MetaData, create_engine
+from sqlalchemy.orm import registry, sessionmaker
 
-from db.entities import TweetInformation
-from sqlalchemy import create_engine
-
-from sqlalchemy.orm import sessionmaker, registry
-from sqlalchemy import MetaData
-
-from db.entities import TweetInformation
-
-from datetime import datetime
-
-from sqlalchemy import Column, Table
-from sqlalchemy import Integer, String
-
-#
-# engine = create_engine(
-#     # r'sqlite:///C:\Users\Daneksandrov\Desktop\
-#     # twitter_parser\twitter_posts_parser\test.db',
-#     # echo=False)
-#     r'sqlite:///test.db',
-#     echo=False)
-#
-#
-# SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-# metadata = MetaData()
-# metadata.create_all(engine)
-#
-# last_load = Table(
-#     'last_load',
-#     metadata,
-#     Column('id', Integer, primary_key=True, autoincrement=True),
-#     Column('time_of_load', String, nullable=False,
-#            default=str(datetime.utcnow())),
-#     Column('tweet_id', Integer, nullable=False),
-# )
-#
 mapper_registry = registry()
 mapper_registry.map_imperatively(TweetInformation, last_load)
 
